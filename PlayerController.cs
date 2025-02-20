@@ -1,0 +1,89 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class PlayerController : MonoBehaviour
+{
+    public float moveSpeed = 5f;
+
+    private Vector2 input;
+    public LayerMask solidObjectsLayer;
+
+    private Animator animator;
+    private bool isMoving;
+
+    private void Awake()
+    {
+        animator = GetComponent<Animator>();
+    }
+
+    void Update()
+    {
+        if (!isMoving)
+        {
+            input.x = Input.GetAxisRaw("Horizontal");
+            input.y = Input.GetAxisRaw("Vertical");
+
+            if(input.x != 0)input.y = 0;
+
+            if (input != Vector2.zero)
+            {
+                animator.SetFloat("moveX", input.x);
+                animator.SetFloat("moveY", input.y);
+
+                var targetPos = transform.position;
+                targetPos.x += input.x;
+                targetPos.y += input.y;
+                if(IsWalkable(targetPos))
+                   StartCoroutine(Move(targetPos));
+            }
+        }
+        animator.SetBool("isMoving", isMoving);
+    }
+
+
+    IEnumerator Move(Vector3 targetPos)
+    {
+        isMoving = true;
+        while ((Vector3)transform.position != targetPos)
+        {
+            transform.position = Vector3.MoveTowards(transform.position, targetPos, moveSpeed * Time.deltaTime);
+            yield return null;
+        }
+        isMoving = false;
+    }
+
+   private bool IsWalkable(Vector3 targetPos)
+{
+    Collider2D collider = Physics2D.OverlapCircle(targetPos, 0.2f, solidObjectsLayer);
+
+    if (collider != null)
+    {
+        if (collider.CompareTag("Pushable")) // Allow pushing boxes
+        {
+            return true;
+        }
+        return false; // Block movement on solid objects
+    }
+    return true; // Allow movement if no collision
+}
+
+
+private void PushObject(GameObject box, Vector3 direction)
+{
+    Rigidbody2D boxRb = box.GetComponent<Rigidbody2D>();
+
+    if (boxRb != null)
+    {
+        Vector3 newPos = box.transform.position + direction;
+        
+        if (!Physics2D.OverlapCircle(newPos, 0.1f, solidObjectsLayer)) // Ensure box can move
+        {
+            boxRb.MovePosition(newPos);
+        }
+    }
+}
+
+
+}
+
